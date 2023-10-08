@@ -36,15 +36,9 @@ def data_preprocessing(ticker_set, start_date, end_date):
 
     dataset = yf.download(ticker_set, start_date, end_date)['Adj Close']
     print('Null Values =', dataset.isnull().values.any())
-    missing_fractions = dataset.isnull().mean().sort_values(ascending=False)
 
-    missing_fractions.head(10)
-
-    drop_list = sorted(list(missing_fractions[missing_fractions > 0.3].index))
-
-    dataset.drop(labels=drop_list, axis=1, inplace=True)
-    print(dataset.shape)
-    dataset = dataset.fillna(method='ffill')
+    dataset = dataset.dropna()
+    print('Null Values =', dataset.isnull().values.any())
 
     returns = dataset.pct_change().mean() * 252
     returns = pd.DataFrame(returns)
@@ -205,12 +199,12 @@ def model_evaluation(X, k_means, hc, ap):
     print("ap", metrics.silhouette_score(X, ap.labels_, metric='euclidean'))
 
 
-def visualizing_time_series_within_a_cluster(X, dataset, ap, clustered_series_ap):
+def visualizing_time_series_within_a_cluster(X, dataset, model, clustered_series_ap, end_analysis_date):
     # all stock with its cluster label (including -1)
     global data
-    clustered_series = pd.Series(index=X.index, data=ap.fit_predict(X).flatten())
+    clustered_series = pd.Series(index=X.index, data=model.fit_predict(X).flatten())
     # clustered stock with its cluster label
-    clustered_series_all = pd.Series(index=X.index, data=ap.fit_predict(X).flatten())
+    clustered_series_all = pd.Series(index=X.index, data=model.fit_predict(X).flatten())
     clustered_series = clustered_series[clustered_series != -1]
     # get the number of stocks in each cluster
     counts = clustered_series_ap.value_counts()
@@ -327,7 +321,8 @@ if __name__ == '__main__':
     ap_, clustered_series_ap_ = affinity_propagation_training(X_, clustered_series_)
 
     model_evaluation(X_, k_means_, hc_, ap_)
-    ticker_count_reduced_, data_, clustered_series_ = visualizing_time_series_within_a_cluster(X_, dataset_, ap_, clustered_series_ap_)
+    model = ap_
+    ticker_count_reduced_, data_, clustered_series_ = visualizing_time_series_within_a_cluster(X_, dataset_, model, clustered_series_ap_, end_analysis_date)
     #score_matrix_, pvalue_matrix_, pairs_ = find_cointegrated_pairs(data_,  significance=0.05)
 
     cluster_dict = {}
